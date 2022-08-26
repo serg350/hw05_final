@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from ..models import Post, Group, Comment
+from ..models import Post, Group, Comment, Follow
 
 User = get_user_model()
 
@@ -304,3 +304,52 @@ class CommentTestViews(TestCase):
             responce.context.get('comments')[0].text,
             self.comments.text
         )
+
+
+class FollowViewTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='testuser')
+        cls.pol = User.objects.create_user(username='test')
+        cls.group = Group.objects.create(
+            title='Новая группа для тестов',
+            slug='test-group',
+            description='Тестовое описание'
+        )
+        cls.post = Post.objects.create(
+            text='Новый текст представленный для примера',
+            author=cls.user,
+            group=cls.group
+        )
+
+    def setUp(self):
+        cache.clear()
+        self.guest_client = Client()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.pol)
+        self.post_author = Client()
+        self.post_author.force_login(self.post.author)
+
+    def test_follow(self):
+        """Тест работы подписки на автора"""
+        cache.clear()
+        response = self.authorized_client.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': self.user}
+            )
+        )
+        print(self.post.author)
+        print(self.user)
+        print(self.pol.username)
+        follower = Follow.objects.filter(
+            user=self.pol,
+            author=self.user,
+        ).exists()
+        print(self.post.author)
+        self.assertTrue(
+            follower,
+            'Не работает подписка на автора'
+        )
+
