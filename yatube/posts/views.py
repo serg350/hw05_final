@@ -3,7 +3,6 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.views.decorators.cache import cache_page
 
-
 from .models import Post, Group, User, Comment, Follow
 from .forms import PostForm, CommentForm
 from .utils import get_page_context
@@ -33,8 +32,14 @@ def group_posts(request, slug):
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     post_list = author.posts.all()
-    following = request.user.is_authenticated and Follow.objects.filter(
-            user=request.user, author=author).exists()
+    following = (
+            request.user.is_authenticated
+            and
+            Follow.objects.filter(
+                user=request.user,
+                author=author
+            ).exists()
+    )
     context = {
         'author': author,
         'page_obj': get_page_context(post_list, request),
