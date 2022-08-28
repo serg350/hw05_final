@@ -311,12 +311,19 @@ class FollowViewTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='testuser')
-        cls.pol = User.objects.create_user(username='test')
+        cls.user_no_follow = User.objects.create_user(username='no_follow')
+        cls.follower = User.objects.create_user(username='test')
         cls.group = Group.objects.create(
             title='Новая группа для тестов',
             slug='test-group',
             description='Тестовое описание'
         )
+        cls.post_no_follower = Post.objects.create(
+            text='Новый текст представленный для примера',
+            author=cls.user_no_follow,
+            group=cls.group
+        )
+        time.sleep(0.1)
         cls.post = Post.objects.create(
             text='Новый текст представленный для примера',
             author=cls.user,
@@ -327,9 +334,7 @@ class FollowViewTests(TestCase):
         cache.clear()
         self.guest_client = Client()
         self.authorized_client = Client()
-        self.authorized_client.force_login(self.pol)
-        self.post_author = Client()
-        self.post_author.force_login(self.post.author)
+        self.authorized_client.force_login(self.follower)
 
     def test_follow(self):
         """Тест работы подписки на автора"""
@@ -340,16 +345,48 @@ class FollowViewTests(TestCase):
                 kwargs={'username': self.user}
             )
         )
-        print(self.post.author)
-        print(self.user)
-        print(self.pol.username)
         follower = Follow.objects.filter(
-            user=self.pol,
+            user=self.follower,
             author=self.user,
         ).exists()
-        print(self.post.author)
         self.assertTrue(
             follower,
             'Не работает подписка на автора'
+        )
+
+    def test_unfollow(self):
+        """Тест работы удаления подписки на автора"""
+        self.authorized_client.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': self.user}
+            )
+        )
+        follower = Follow.objects.filter(
+            user=self.follower,
+            author=self.user,
+        ).delete()
+        self.assertTrue(
+            follower,
+            'Не работает удаление подписки на автора'
+        )
+
+    def test_follow_index_works_correctly(self):
+        """Новая запись пользователя появляется в ленте тех,
+        кто на него подписан"""
+        self.authorized_client.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': self.user}
+            )
+        )
+        response = self.authorized_client.get(
+            reverse(
+                'posts:follow_index'
+            )
+        )
+        self.assertEqual(
+            response.context.get('page_obj')[0].text,
+            self.post.text
         )
 

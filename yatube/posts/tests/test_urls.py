@@ -92,3 +92,8 @@ class URLTest(TestCase):
             with self.subTest(url=url):
                 responce = self.post_author.get(url)
                 self.assertTemplateUsed(responce, template)
+
+    def test_on_code_404(self):
+        """Сервер возвращает код 404, если страница не найдена."""
+        response = self.authorized_client.get('/123')
+        self.assertEqual(response.status_code, 404)
