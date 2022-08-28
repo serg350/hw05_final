@@ -34,8 +34,7 @@ def profile(request, username):
     post_list = author.posts.all()
     following = (
             request.user.is_authenticated
-            and
-            Follow.objects.filter(
+            and Follow.objects.filter(
                 user=request.user,
                 author=author
             ).exists()
