@@ -119,7 +119,10 @@ class PostPagesTest(TestCase):
             reverse('posts:profile', kwargs={'username': self.post.author})
         )
         self.assertEqual(response.context.get('author'), self.post.author)
-        self.assertEqual(response.context['page_obj'][0].image, self.post.image)
+        self.assertEqual(
+            response.context['page_obj'][0].image,
+            self.post.image
+        )
 
     def test_post_detail_show_correct_context(self):
         """Шаблон post_detail сформирован с правильным контекстом."""
@@ -339,7 +342,7 @@ class FollowViewTests(TestCase):
     def test_follow(self):
         """Тест работы подписки на автора"""
         cache.clear()
-        response = self.authorized_client.get(
+        self.authorized_client.get(
             reverse(
                 'posts:profile_follow',
                 kwargs={'username': self.user}
@@ -389,4 +392,3 @@ class FollowViewTests(TestCase):
             response.context.get('page_obj')[0].text,
             self.post.text
         )
-
