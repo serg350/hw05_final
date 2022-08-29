@@ -4,10 +4,10 @@ from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.conf import settings
 
-from ..models import Post, Group
-
 import shutil
 import tempfile
+
+from ..models import Post, Group
 
 User = get_user_model()
 
@@ -76,7 +76,7 @@ class FormModelTest(TestCase):
         self.assertEqual(Post.objects.count(), post_count + 1)
         self.assertTrue(
             Post.objects.filter(
-                text='Новый текст для добавления поста',
+                text=form_data['text'],
                 group=self.group.id,
                 image='posts/small.gif'
             ).exists()
@@ -101,7 +101,7 @@ class FormModelTest(TestCase):
         self.assertEqual(Post.objects.count(), post_count)
         self.assertTrue(
             Post.objects.filter(
-                text='Новый текст для редактирования поста',
+                text=form_data['text'],
                 group=self.group.id
             ).exists()
         )

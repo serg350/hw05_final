@@ -130,20 +130,15 @@ class PostPagesTest(TestCase):
             'posts:post_detail', kwargs={'post_id': self.post.id})
         )
         self.assertEqual(response.context.get('post').text,
-                         self.post.text
-                         )
+                         self.post.text)
         self.assertEqual(response.context.get('post').pub_date,
-                         self.post.pub_date
-                         )
+                         self.post.pub_date)
         self.assertEqual(response.context.get('post').author,
-                         self.post.author
-                         )
+                         self.post.author)
         self.assertEqual(response.context.get('post').group,
-                         self.post.group
-                         )
+                         self.post.group)
         self.assertEqual(response.context.get('post').image,
-                         self.post.image
-                         )
+                         self.post.image)
 
     def test_post_edit_show_correct_context(self):
         """Шаблон post_edit сформирован с правильным контекстом."""
@@ -175,9 +170,7 @@ class PostPagesTest(TestCase):
             author=self.user
         )
         response = self.authorized_client.get(reverse('posts:index'))
-        cache_object = response.context['page_obj']
-        self.assertEqual(len(cache_object), 3)
-        Post.objects.filter(id=self.post_test_cache.id).delete()
+        self.post_test_cache.delete()
         response_cache = self.authorized_client.get(reverse('posts:index'))
         self.assertEqual(response.content, response_cache.content)
         cache.clear()
@@ -271,6 +264,23 @@ class CommentTestViews(TestCase):
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
 
+    def test_add_comment_for_guest_client(self):
+        """"Комментирование поста неавторизованным пользователем"""
+        response = self.guest_client.get(
+            reverse(
+                'posts:add_comment',
+                kwargs={
+                    'post_id': self.post.id
+                }
+            )
+        )
+        self.assertRedirects(
+            response,
+            reverse(
+                'users:login'
+            ) + f'?next=/posts/{self.post.id}/comment/'
+        )
+
     def test_add_comment_for_authorized_client(self):
         """Комментировать может только авторизованный пользователь"""
         response = self.authorized_client.get(
@@ -281,18 +291,32 @@ class CommentTestViews(TestCase):
                 }
             )
         )
-        self.assertEqual(
-            response.status_code,
-            HTTPStatus.FOUND,
-            ('Неавторизированный пользователь'
-             ' не может оставлять комментарий')
-        )
         self.assertRedirects(
             response,
             reverse(
                 'posts:post_detail',
                 kwargs={'post_id': self.post.id}
             )
+        )
+        form_data = {
+            'text': 'test_comment',
+        }
+        comment_count = Comment.objects.count()
+        self.authorized_client.post(
+            reverse(
+                'posts:add_comment',
+                kwargs={
+                    'post_id': self.post.id
+                }
+            ),
+            data=form_data,
+            follow=True
+        )
+        self.assertEqual(Comment.objects.count(), comment_count + 1)
+        self.assertTrue(
+            Comment.objects.filter(
+                text=form_data['text'],
+            ).exists()
         )
 
     def test_comment_view_on_post_detail(self):
@@ -359,6 +383,20 @@ class FollowViewTests(TestCase):
 
     def test_unfollow(self):
         """Тест работы удаления подписки на автора"""
+        self.authorized_client.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': self.user}
+            )
+        )
+        follower = Follow.objects.filter(
+            user=self.follower,
+            author=self.user,
+        ).exists()
+        self.assertTrue(
+            follower,
+            'Не работает подписка на автора'
+        )
         self.authorized_client.get(
             reverse(
                 'posts:profile_unfollow',
