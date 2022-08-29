@@ -265,13 +265,23 @@ class CommentTestViews(TestCase):
 
     def test_add_comment_for_guest_client(self):
         """"Комментирование поста неавторизованным пользователем"""
-        response = self.guest_client.get(
+        form_data = {
+            'text': 'test_comment_guest_client',
+        }
+        response = self.guest_client.post(
             reverse(
                 'posts:add_comment',
                 kwargs={
                     'post_id': self.post.id
                 }
-            )
+            ),
+            data=form_data,
+            follow=True
+        )
+        self.assertFalse(
+            Comment.objects.filter(
+                text=form_data['text'],
+            ).exists()
         )
         self.assertRedirects(
             response,
@@ -282,21 +292,6 @@ class CommentTestViews(TestCase):
 
     def test_add_comment_for_authorized_client(self):
         """Комментировать может только авторизованный пользователь"""
-        response = self.authorized_client.get(
-            reverse(
-                'posts:add_comment',
-                kwargs={
-                    'post_id': self.post.id
-                }
-            )
-        )
-        self.assertRedirects(
-            response,
-            reverse(
-                'posts:post_detail',
-                kwargs={'post_id': self.post.id}
-            )
-        )
         form_data = {
             'text': 'test_comment',
         }
@@ -382,11 +377,9 @@ class FollowViewTests(TestCase):
 
     def test_unfollow(self):
         """Тест работы удаления подписки на автора"""
-        self.authorized_client.get(
-            reverse(
-                'posts:profile_follow',
-                kwargs={'username': self.user}
-            )
+        Follow.objects.create(
+            user=self.follower,
+            author=self.user,
         )
         follower = Follow.objects.filter(
             user=self.follower,
@@ -402,11 +395,15 @@ class FollowViewTests(TestCase):
                 kwargs={'username': self.user}
             )
         )
-        follower = Follow.objects.filter(
+        Follow.objects.filter(
             user=self.follower,
             author=self.user,
         ).delete()
-        self.assertTrue(
+        follower = Follow.objects.filter(
+            user=self.follower,
+            author=self.user,
+        ).exists()
+        self.assertFalse(
             follower,
             'Не работает удаление подписки на автора'
         )
